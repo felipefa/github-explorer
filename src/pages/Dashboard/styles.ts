@@ -72,7 +72,8 @@ export const Repositories = styled.div`
     }
 
     div {
-      margin-left: 16px;
+      flex: 1;
+      margin: 0 16px;
 
       strong {
         color: #3d3d4d;
