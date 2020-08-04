@@ -1,11 +1,11 @@
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useEffect, useState } from 'react';
 import { FiChevronRight } from 'react-icons/fi';
 
 import logoImage from '../../assets/logo.svg';
 
 import api from '../../services/api';
 
-import { Form, Repositories, Title } from './styles';
+import { Error, Form, Repositories, Title } from './styles';
 
 interface Repository {
   description: string;
@@ -17,35 +17,66 @@ interface Repository {
 }
 
 const Dashboard: React.FC = () => {
+  const [inputError, setInputError] = useState('');
   const [newRepo, setNewRepo] = useState('');
-  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [repositories, setRepositories] = useState<Repository[]>(() => {
+    const storedRepositories = localStorage.getItem(
+      '@GitHubExplorer:repositories',
+    );
+
+    if (storedRepositories) {
+      return JSON.parse(storedRepositories);
+    }
+
+    return [];
+  });
 
   async function handleAddRepository(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
 
-    const response = await api.get<Repository>(`/repos/${newRepo}`);
+    if (!newRepo) {
+      setInputError('You must inform the author/repository name');
 
-    const repository = response.data;
+      return;
+    }
 
-    setNewRepo('');
-    setRepositories([...repositories, repository]);
+    try {
+      const response = await api.get<Repository>(`/repos/${newRepo}`);
+
+      const repository = response.data;
+
+      setInputError('');
+      setNewRepo('');
+      setRepositories([...repositories, repository]);
+    } catch (error) {
+      setInputError(`Unable to find ${newRepo}`);
+    }
   }
+
+  useEffect(() => {
+    localStorage.setItem(
+      '@GitHubExplorer:repositories',
+      JSON.stringify(repositories),
+    );
+  }, [repositories]);
 
   return (
     <>
       <img src={logoImage} alt="GitHub Explorer" />
-      <Title>Explore repositórios no GitHub.</Title>
+      <Title>Explore GitHub repositories.</Title>
 
-      <Form onSubmit={handleAddRepository}>
+      <Form hasError={!!inputError} onSubmit={handleAddRepository}>
         <input
           onChange={e => setNewRepo(e.target.value)}
-          placeholder="Digite o nome do repositório"
+          placeholder="Type the author/repository name"
           value={newRepo}
         />
-        <button type="submit">Pesquisar</button>
+        <button type="submit">Search</button>
       </Form>
+
+      {inputError && <Error>{inputError}</Error>}
 
       <Repositories>
         {repositories.map(repository => (
